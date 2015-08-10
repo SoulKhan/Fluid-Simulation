@@ -95,3 +95,15 @@ float Advect (Field velocityField, Field fieldToBeChanged, GridPoint pointToBeCh
 
     BLerpPoint (fieldToBeChanged.newState, oldPos);
 }
+
+float Jacobi (Field fieldX, float** b, GridPoint point, float alpha, float rBeta)
+{
+    float xLeft   = GetPoint (fieldX.oldState, point - {1, 0}),
+          xRight  = GetPoint (fieldX.oldState, point + {1, 0}),
+          xBottom = GetPoint (fieldX.oldState, point - {0, 1}),
+          xTop    = GetPoint (fieldX.oldState, point + {0, 1});
+
+    float bC = GetPoint (b, point);
+
+    return (xLeft + xRight + xBottom + xTop + alpha * bC) * rBeta;
+}
