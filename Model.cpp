@@ -35,7 +35,7 @@ inline float Lerp (float a, float b, float t)
     return a + (b - a) * t;
 }
 
-inline float BLerp(float a, float b, float c, float d, float tx, float ty)
+inline float BLerp (float a, float b, float c, float d, float tx, float ty)
 {
     return Lerp (Lerp (b, c, tx), Lerp (a, d, tx), ty);
 }
@@ -120,7 +120,7 @@ float Jacobi (Field fieldX, float** b, GridPoint point, float alpha, float rBeta
     return (xLeft + xRight + xBottom + xTop + alpha * bC) * rBeta;
 }
 
-float Divergence(VectorField vectorField, GridPoint point)
+float Divergence (VectorField vectorField, GridPoint point)
 {
     float vectorFieldLeft   = GetPoint (vectorField, point - {1, 0}),
           vectorFieldRight  = GetPoint (vectorField, point + {1, 0}),
@@ -128,4 +128,14 @@ float Divergence(VectorField vectorField, GridPoint point)
           vectorFieldTop    = GetPoint (vectorField, point + {0, 1});
 
     return (vectorFieldRight.x - vectorFieldLeft.x) + (vectorFieldTop.y - vectorFieldBottom.y);
+}
+
+float Gradient (Field pressureField, Field velocityField, GridPoint point)
+{
+    float pressureLeft   = GetPoint (pressureField, point - {1, 0});
+    float pressureRight  = GetPoint (pressureField, point + {1, 0});
+    float pressureBottom = GetPoint (pressureField, point - {0, 1});
+    float pressureTop    = GetPoint (pressureField, point + {0, 1});
+
+    return GetPoint (velocityField, point) - {pressureRight - pressureLeft, pressureTop - pressureBottom};
 }
