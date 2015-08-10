@@ -12,10 +12,22 @@ struct GridPoint
     int y;
 }
 
+struct Vector
+{
+    float x;
+    float y;
+}
+
 struct Field
 {
     float** newState;
     float** oldState;
+}
+
+struct VectorField
+{
+    Vector x;
+    Vector y;
 }
 
 inline float Lerp (float a, float b, float t)
@@ -106,4 +118,14 @@ float Jacobi (Field fieldX, float** b, GridPoint point, float alpha, float rBeta
     float bC = GetPoint (b, point);
 
     return (xLeft + xRight + xBottom + xTop + alpha * bC) * rBeta;
+}
+
+float Divergence(VectorField vectorField, GridPoint point)
+{
+    float vectorFieldLeft   = GetPoint (vectorField, point - {1, 0}),
+          vectorFieldRight  = GetPoint (vectorField, point + {1, 0}),
+          vectorFieldBottom = GetPoint (vectorField, point - {0, 1}),
+          vectorFieldTop    = GetPoint (vectorField, point + {0, 1});
+
+    return (vectorFieldRight.x - vectorFieldLeft.x) + (vectorFieldTop.y - vectorFieldBottom.y);
 }
