@@ -139,3 +139,8 @@ float Gradient (Field pressureField, Field velocityField, GridPoint point)
 
     return GetPoint (velocityField, point) - {pressureRight - pressureLeft, pressureTop - pressureBottom};
 }
+
+inline float SetBoundary (GridPoint point, GridPoint offset, float scale, Field stateField)
+{
+    return scale * GetPoint (stateField, point + offset);
+}
