@@ -1,34 +1,45 @@
-#include "math.h"
+#include "assert.h"
+#include "Math.h"
+#include "Vector.h"
 
-struct ModelPoint
-{
-    float x;
-    float y;
-};
+//============================================================================
 
-struct GridPoint
-{
-    int x;
-    int y;
-}
+inline float Lerp  (float a, float b, float t);
 
-struct Vector
-{
-    float x;
-    float y;
-}
+inline float BLerp (float a, float b, float c, float d, float tx, float ty);
 
-struct Field
-{
-    float** newState;
-    float** oldState;
-}
 
-struct VectorField
-{
-    Vector x;
-    Vector y;
-}
+float BLerpPoint (float scalarField, Vector <float> point, Vector <int> fieldSize);
+
+
+Vector <float> intToFloat (Vector <int> vec);
+
+//----------------------------------------------------------------------------
+
+float Advect (Vector <float> ** velocityField, float ** quantityField, Vector <int> coords, float timeStep, Vector <int> fieldSize);
+
+
+/*Vector <float> Jacobi (Vector <float> ** vectorFieldOfValues, Vector <int> coords,
+                       Vector <float> ** vectorFieldOfConstants, float alpha, float beta);
+
+float Jacobi (float ** scalarFieldOfValues, Vector <int> coords,
+              float ** scalarFieldOfConstants, float alpha, float beta);*/
+
+
+/*template <typename Type>
+Vector <Type> ** subtractPressureFromVelocity (float ** scalarField, Vector <int> fieldSize,
+                                               Vector <float> ** velocityField, float spaceStep);*/
+
+
+//inline float SetBoundary (Vector <int> currentPoint, Vector <int> offset, float scale, Vector <float> ** stateField);
+
+void SetBoundary (Vector <float> ** stateField, Vector <int> fieldSize);
+
+//----------------------------------------------------------------------------
+
+void computeNextHeight (float ** scalarFieldA, float ** scalarFieldB, float ** scalarFieldC, Vector <int> fieldSize);
+
+//============================================================================
 
 inline float Lerp (float a, float b, float t)
 {
@@ -40,22 +51,15 @@ inline float BLerp (float a, float b, float c, float d, float tx, float ty)
     return Lerp (Lerp (b, c, tx), Lerp (a, d, tx), ty);
 }
 
-inline float GetPoint (float** field, GridPoint point)
+
+float BLerpPoint (float ** scalarField, Vector <float> point, Vector <int> fieldSize)
 {
-    return field [point.x][point.y];
-}
+    Vector <int> a, b, c, d;
 
-float BLerpPoint (float** field, ModelPoint point)
-{
-    GridPoint a = {0, 0},
-              b = {0, 0},
-              c = {0, 0},
-              d = {0, 0};
+    float gridCellSize = scalarField [1][0] - scalarField [0][0];
 
-    float gridCellSize = field [1][0] - field [0][0];
-
-    float roundX = roundf (point.x / gridCellSize),
-          roundY = roundf (point.y / gridCellSize);
+    int roundX = (int) roundf (point.x / gridCellSize),
+        roundY = (int) roundf (point.y / gridCellSize);
 
     if (roundX >= point.x)
     {
@@ -86,61 +90,140 @@ float BLerpPoint (float** field, ModelPoint point)
 
     else
     {
-        b.x = (int) roundX;
-        c.x = (int) roundX;
+        b.x = roundX;
+        c.x = roundX;
 
-        a.x = (int) roundX + 1;
-        d.x = (int) roundX + 1;
+        a.x = roundX + 1;
+        d.x = roundX + 1;
     }
 
     float tx = (point.x - a.x) / (a.x - d.x);
     float ty = (point.y - c.y) / (d.y - c.y);
 
-    return BLerp (field [a.x][a.y], field [b.x][b.y],
-                  field [c.x][c.y], field [d.x][d.y], tx, ty);
+    assert (a.x < fieldSize.x && a.x >= 0);
+    assert (a.y < fieldSize.y && a.y >= 0);
+
+    assert (b.x < fieldSize.x && b.x >= 0);
+    assert (b.y < fieldSize.y && b.y >= 0);
+
+    assert (c.x < fieldSize.x && c.x >= 0);
+    assert (c.y < fieldSize.y && c.y >= 0);
+
+    assert (d.x < fieldSize.x && d.x >= 0);
+    assert (d.y < fieldSize.y && d.y >= 0);
+
+    return BLerp (scalarField [a.x][a.y], scalarField [b.x][b.y],
+                  scalarField [c.x][c.y], scalarField [d.x][d.y], tx, ty);
 }
 
-float Advect (Field velocityField, Field fieldToBeChanged, GridPoint pointToBeChanged, float timeStep)
-{
-    ModelPoint oldPos  =            GetPoint (velocityField.newState, pointToBeChanged);
-               oldPos -= timeStep * GetPoint (velocityField.oldState, pointToBeChanged);
+//----------------------------------------------------------------------------
 
-    BLerpPoint (fieldToBeChanged.newState, oldPos);
+Vector <float> intToFloat (Vector <int> vec)
+{
+    Vector <float> tmpVec;
+
+    tmpVec.x = (float) vec.x;
+    tmpVec.y = (float) vec.y;
+
+    return tmpVec;
 }
 
-float Jacobi (Field fieldX, float** b, GridPoint point, float alpha, float rBeta)
+//============================================================================
+
+float Advect (Vector <float> ** velocityField, float ** quantityField, Vector <int> coords, float timeStep, Vector <int> fieldSize)
 {
-    float xLeft   = GetPoint (fieldX.oldState, point - {1, 0}),
-          xRight  = GetPoint (fieldX.oldState, point + {1, 0}),
-          xBottom = GetPoint (fieldX.oldState, point - {0, 1}),
-          xTop    = GetPoint (fieldX.oldState, point + {0, 1});
+    assert (coords.x < fieldSize.x && coords.x >= 0);
+    assert (coords.y < fieldSize.y && coords.y >= 0);
 
-    float bC = GetPoint (b, point);
+    Vector <float> oldPos = intToFloat (coords) - velocityField [coords.x][coords.y] * timeStep;
 
-    return (xLeft + xRight + xBottom + xTop + alpha * bC) * rBeta;
+    return BLerpPoint (quantityField, oldPos, fieldSize);
 }
 
-float Divergence (VectorField vectorField, GridPoint point)
-{
-    float vectorFieldLeft   = GetPoint (vectorField, point - {1, 0}),
-          vectorFieldRight  = GetPoint (vectorField, point + {1, 0}),
-          vectorFieldBottom = GetPoint (vectorField, point - {0, 1}),
-          vectorFieldTop    = GetPoint (vectorField, point + {0, 1});
+//----------------------------------------------------------------------------
 
-    return (vectorFieldRight.x - vectorFieldLeft.x) + (vectorFieldTop.y - vectorFieldBottom.y);
+/*Vector <float> Jacobi (Vector <float> ** vectorFieldOfValues, Vector <int> coords,
+                       Vector <float> ** vectorFieldOfConstants, float alpha, float beta)
+{
+    Vector <float> newVectorOfValue = Divergence (vectorFieldOfValues, coords, beta / 2);
+
+    newVectorOfValue += alpha * vectorFieldOfConstants [coords.x][coords.y] / beta;
+
+    return newVectorOfValue;
 }
 
-float Gradient (Field pressureField, Field velocityField, GridPoint point)
+float Jacobi (float ** scalarFieldOfValues, Vector <int> coords,
+              float ** scalarFieldOfConstants, float alpha, float beta)
 {
-    float pressureLeft   = GetPoint (pressureField, point - {1, 0});
-    float pressureRight  = GetPoint (pressureField, point + {1, 0});
-    float pressureBottom = GetPoint (pressureField, point - {0, 1});
-    float pressureTop    = GetPoint (pressureField, point + {0, 1});
+    float newScalarValue = Divergence (scalarFieldOfValues, coords, beta / 2);
 
-    return GetPoint (velocityField, point) - {pressureRight - pressureLeft, pressureTop - pressureBottom};
+    newScalarValue += alpha * scalarFieldOfConstants [coords.x][coords.y] / beta;
+
+    return newScalarValue;
+}*/
+
+//----------------------------------------------------------------------------
+
+/*template <typename Type>
+Vector <Type> ** subtractPressureFromVelocity (float ** scalarField, Vector <int> fieldSize,
+                                               Vector <float> ** velocityField, float spaceStep)
+{
+    Vector <float> ** newVelocityField;
+
+    for (int x = 0; x < fieldSize.x; x ++)
+    {
+        for (int y = 0; y < fieldSize.y; y ++)
+        {
+            newVelocityField [x][y] = velocityField [x][y] - GradientForField (scalarField, fieldSize, spaceStep) [x][y];
+        }
+    }
+
+    return newVelocityField;
+}*/
+
+//----------------------------------------------------------------------------
+
+/*inline Vector <float> SetBoundary (Vector <int> currentPoint, Vector <int> offset, float scale, Vector <float> ** stateField)
+{
+    return scale * stateField [currentPoint.x + offset.x][currentPoint.y + offset.y];
+}*/
+
+void SetBoundary (float ** scalarField, Vector <int> fieldSize)
+{
+    for (int x = 0; x < fieldSize.x;  x ++)
+    {
+        assert (x < fieldSize.x && x >= 0);
+        assert (fieldSize.y - 1 < fieldSize.y && fieldSize.y - 1 >= 0);
+
+        scalarField [x][fieldSize.y - 1] = 0;
+        scalarField [x][0]               = 0;
+    }
+
+    for (int y = 0; y < fieldSize.y; y ++)
+    {
+        assert (y < fieldSize.y && y >= 0);
+        assert (fieldSize.x - 1 < fieldSize.y && fieldSize.x - 1 >= 0);
+
+        scalarField [fieldSize.x - 1][y] = 0;
+        scalarField [0]              [y] = 0;
+    }
 }
 
-inline float SetBoundary (GridPoint point, GridPoint offset, float scale, Field stateField)
+void computeNextHeight (float ** scalarFieldA, float ** scalarFieldB, float ** scalarFieldC,
+                        Vector <int> fieldSize, float spaceStep, float timeStep, float alpha)
 {
-    return scale * GetPoint (stateField, point + offset);
+    for (int x = 1; x + 1 < fieldSize.x; x ++)
+    {
+        for (int y = 1; y + 1 < fieldSize.y; y ++)
+        {
+            assert (x < fieldSize.x && x >= 0);
+            assert (y < fieldSize.y && y >= 0);
+
+            scalarFieldA [x][y]  = alpha * Laplacian (scalarFieldB, Vector <int> (x, y), spaceStep);
+            scalarFieldA [x][y] *= powf (timeStep, 2);
+
+            scalarFieldA [x][y] += 2 * scalarFieldB [x][y];
+            scalarFieldA [x][y] -=     scalarFieldC [x][y];
+        }
+    }
 }
