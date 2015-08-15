@@ -14,18 +14,16 @@ struct Vector
 
 
 template <typename Type>
-Vector <Type> :: Vector ()
-{
-    x = 0;
-    y = 0;
-}
+Vector <Type> :: Vector () :
+    x (0),
+    y (0)
+{}
 
 template <typename Type>
-Vector <Type> :: Vector (Type componentX, Type componentY)
-{
-    x = componentX;
-    y = componentY;
-}
+Vector <Type> :: Vector (Type componentX, Type componentY) :
+    x (componentX),
+    y (componentY)
+{}
 
 //============================================================================
 

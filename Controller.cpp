@@ -4,12 +4,13 @@
 
 //============================================================================
 
-const int SIZE_X     = 128,
-          SIZE_Y     = 128;
+const int SIZE_X     = 127,
+          SIZE_Y     = 127;
 
-const float TIME_STEP  = 0.01,
-            SPACE_STEP = 0.1,
-            ALPHA      = 0.25;
+const float TIME_STEP  = 0.01f,
+            SPACE_STEP = 0.1f,
+            ALPHA      = 0.25f,
+            VIS        = 0.001f;
 
 //============================================================================
 
@@ -21,9 +22,9 @@ void equateArrs (float** arrA, float** arrB, Vector <int> arrSize);
 
 //----------------------------------------------------------------------------
 
-inline float lerp (float a, float b, float t);
+//inline float lerp (float a, float b, float t);
 
-COLORREF lerp (COLORREF colorA, COLORREF colorB, float t);
+//COLORREF lerp (COLORREF colorA, COLORREF colorB, float t);
 
 //----------------------------------------------------------------------------
 
@@ -46,12 +47,12 @@ int main ()
     int draw = 0;
 
     float adjustRadius = 10;
-    float newHeight = 10;
+    float newHeight = -1;
 
     while (!GetAsyncKeyState (VK_ESCAPE))
     {
         computeNextHeight (currentHeight, preCurrentHeight, prePreCurrentHeight,
-                           dlv, SPACE_STEP, TIME_STEP, ALPHA);
+                           dlv, SPACE_STEP, TIME_STEP, ALPHA, VIS);
 
         if (txMouseButtons () == 1)
         {
@@ -61,7 +62,7 @@ int main ()
         equateArrs (prePreCurrentHeight, preCurrentHeight, dlv);
         equateArrs (preCurrentHeight,    currentHeight,    dlv);
 
-        if (draw % 50 == 0)
+        if (draw % 15 == 0)
         {
             render (currentHeight, dlv);
 

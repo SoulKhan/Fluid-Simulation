@@ -3,7 +3,7 @@
 
 //============================================================================
 
-const int MAX_HEIGHT = 1000;
+const float MAX_HEIGHT = 385;
 
 COLORREF MAX_COLOR = RGB (255, 255, 255),
          MIN_COLOR = RGB (0, 0, 0);

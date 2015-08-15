@@ -4,6 +4,10 @@
 
 //============================================================================
 
+#define DONT_USE_ISLAND
+
+//============================================================================
+
 inline float Lerp  (float a, float b, float t);
 
 inline float BLerp (float a, float b, float c, float d, float tx, float ty);
@@ -37,7 +41,8 @@ void SetBoundary (Vector <float> ** stateField, Vector <int> fieldSize);
 
 //----------------------------------------------------------------------------
 
-void computeNextHeight (float ** scalarFieldA, float ** scalarFieldB, float ** scalarFieldC, Vector <int> fieldSize);
+void computeNextHeight (float ** scalarFieldA, float ** scalarFieldB, float ** scalarFieldC,
+                        Vector <int> fieldSize, float spaceStep, float timeStep, float alpha, float vis);
 
 //============================================================================
 
@@ -51,7 +56,7 @@ inline float BLerp (float a, float b, float c, float d, float tx, float ty)
     return Lerp (Lerp (b, c, tx), Lerp (a, d, tx), ty);
 }
 
-
+float BLerpPoint (float ** scalarField, Vector <float> point, Vector <int> fieldSize);
 float BLerpPoint (float ** scalarField, Vector <float> point, Vector <int> fieldSize)
 {
     Vector <int> a, b, c, d;
@@ -97,8 +102,8 @@ float BLerpPoint (float ** scalarField, Vector <float> point, Vector <int> field
         d.x = roundX + 1;
     }
 
-    float tx = (point.x - a.x) / (a.x - d.x);
-    float ty = (point.y - c.y) / (d.y - c.y);
+    float tx = (float) (((double)point.x - a.x) / (a.x - d.x));
+    float ty = (float) (((double)point.y - c.y) / (d.y - c.y));
 
     assert (a.x < fieldSize.x && a.x >= 0);
     assert (a.y < fieldSize.y && a.y >= 0);
@@ -188,6 +193,7 @@ Vector <Type> ** subtractPressureFromVelocity (float ** scalarField, Vector <int
     return scale * stateField [currentPoint.x + offset.x][currentPoint.y + offset.y];
 }*/
 
+void SetBoundary (float ** scalarField, Vector <int> fieldSize);
 void SetBoundary (float ** scalarField, Vector <int> fieldSize)
 {
     for (int x = 0; x < fieldSize.x;  x ++)
@@ -210,20 +216,47 @@ void SetBoundary (float ** scalarField, Vector <int> fieldSize)
 }
 
 void computeNextHeight (float ** scalarFieldA, float ** scalarFieldB, float ** scalarFieldC,
-                        Vector <int> fieldSize, float spaceStep, float timeStep, float alpha)
+                        Vector <int> fieldSize, float spaceStep, float timeStep, float alpha, float vis)
 {
+    //float maxHeight = 0;
+
     for (int x = 1; x + 1 < fieldSize.x; x ++)
     {
         for (int y = 1; y + 1 < fieldSize.y; y ++)
         {
+            #ifdef USE_ISLAND
+
+            float distanceFromCenter = (float) sqrt (pow (fieldSize.x / 2 - x, 2) + pow (fieldSize.y / 2 - y, 2));
+
+            if (distanceFromCenter >= 20)
+            {
+                assert (x < fieldSize.x && x >= 0);
+                assert (y < fieldSize.y && y >= 0);
+
+                scalarFieldA [x][y] += alpha * Laplacian (scalarFieldB, Vector <int> (x, y), spaceStep);
+                scalarFieldA [x][y] *= powf (timeStep, 2);
+
+                scalarFieldA [x][y] += (2.0f - 2 * vis) * scalarFieldB [x][y];
+                scalarFieldA [x][y] -= (1.0f - vis) *  scalarFieldC [x][y];
+
+            }
+
+            #endif
+
+            #ifdef DONT_USE_ISLAND
+
             assert (x < fieldSize.x && x >= 0);
             assert (y < fieldSize.y && y >= 0);
 
-            scalarFieldA [x][y]  = alpha * Laplacian (scalarFieldB, Vector <int> (x, y), spaceStep);
+            scalarFieldA [x][y] += alpha * Laplacian (scalarFieldB, Vector <int> (x, y), spaceStep);
             scalarFieldA [x][y] *= powf (timeStep, 2);
 
-            scalarFieldA [x][y] += 2 * scalarFieldB [x][y];
-            scalarFieldA [x][y] -=     scalarFieldC [x][y];
+            scalarFieldA [x][y] += (2.0f - 2 * vis) * scalarFieldB [x][y];
+            scalarFieldA [x][y] -= (1.0f - vis) *  scalarFieldC [x][y];
+
+            #endif
         }
     }
+
+    //printf ("%f\n", maxHeight);
 }
