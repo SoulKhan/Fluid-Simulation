@@ -282,6 +282,9 @@ Type ** LaplacianForField (Type ** scalarField, Vector <int> fieldSize, float sp
     {
         for (int y = 0; y < fieldSize.y; y ++)
         {
+            assert (x < fieldSize.x && x >= 0);
+            assert (y < fieldSize.y && y >= 0);
+
             newScalarField [x][y] = Laplacian (scalarField, Vector <int> (x, y), spaceStep);
         }
     }

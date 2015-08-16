@@ -42,7 +42,7 @@ GLuint loadjpgGL (const char* file)
         glTexImage2D (
             GL_TEXTURE_2D,
             0,
-            GL_COMPRESSED_RGB_S3TC_DXT1_EXT,
+            GL_COMPRESSED_RGB,
             image.JPGHeight,
             image.JPGWidth,
             0,

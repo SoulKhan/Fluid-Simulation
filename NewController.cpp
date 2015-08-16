@@ -12,8 +12,6 @@
 #include "gl/ijl.h"
 #include "gl/load_jpg.cpp"
 
-#include "gl/glaux.h"
-
 #include "Model.cpp"
 
 //============================================================================
@@ -23,9 +21,10 @@ const int SIZE_X = 127,
 
 const float TIME_STEP  = 0.01f,
             SPACE_STEP = 0.1f,
-            ALPHA      = 0.25f,
-            VIS        = 0.0005f,
+            ALPHA      = 0.20f,
             NEW_HEIGHT = 0.0002f;
+
+float       VIS        = 0.0005f;
 
 //============================================================================
 
@@ -33,6 +32,19 @@ struct Vertex
 {
     float coords [3];
     float normal [3];
+};
+
+struct Vect3d
+{
+    float x, y, z;
+};
+
+struct FuncParams
+{
+    int func;
+
+    Vect3d angle;
+    Vect3d zoom;
 };
 
 //============================================================================
@@ -49,9 +61,15 @@ float ModelAngleZ  = 0.0f;
 
 float ModelZoomZ  = 0.0f;
 
-float NextWave = GetTickCount ();
+float NextWave = 15000;
 
-unsigned int Texture [1];
+unsigned int Texture [2];
+
+FuncParams* Controls;
+
+int ControlsSize = 0;
+
+int CurrentControl = 0;
 
 //============================================================================
 
@@ -75,14 +93,16 @@ void Keyboard (unsigned char key, int x, int y);
 
 void MakeWave ();
 
-AUX_RGBImageRec* LoadBMP (char* filename);
+void LoadTextures ();
 
-int LoadGLTextures();
+void ReadController ();
 
 //============================================================================
 
 int main (int argc, char* argv[])
 {
+    txCreateWindow (128, 128);
+
     glutInit               (&argc, argv);
     glutInitDisplayMode    (GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
     glutInitWindowSize     (GetSystemMetrics (SM_CXSCREEN) / 2, GetSystemMetrics (SM_CYSCREEN) / 2);
@@ -154,10 +174,7 @@ void equateArrs (float** arrA, float** arrB, Vector <int> arrSize)
 
 void InitGL ()
 {
-    if (!LoadGLTextures())
-    {
-       puts ("IMAGE NOT LOADED!");
-    }
+    ReadController ();
 
     glHint (GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);
 
@@ -169,8 +186,6 @@ void InitGL ()
 
     glShadeModel (GL_SMOOTH);
     glDisable (GL_LINE_SMOOTH);
-
-    //glEnable (GL_CULL_FACE);
 
     memset (Vertices, 0, sizeof (Vertices));
 
@@ -192,14 +207,15 @@ void InitGL ()
         }
     }
 
-    loadjpgGL ("U:\\Учебные классы\\Water\\Water.jpg");
+
+    Texture [0] = loadjpgGL ("X:\\Map\\Back4.jpg");
+
+    Texture [1] = loadjpgGL ("X:\\Map\\Water3.jpg");
+
 
     glTexEnvf (GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_BLEND);
     glTexGeni (GL_S, GL_TEXTURE_GEN_MODE, GL_SPHERE_MAP);
     glTexGeni (GL_T, GL_TEXTURE_GEN_MODE, GL_SPHERE_MAP);
-
-    glEnable (GL_TEXTURE_GEN_S);
-    glEnable (GL_TEXTURE_GEN_T);
 
     glEnable (GL_DEPTH_TEST);
     glEnable (GL_TEXTURE_2D);
@@ -208,8 +224,6 @@ void InitGL ()
 
     glEnable (GL_LIGHTING);
     glEnable (GL_LIGHT0);
-
-
 }
 
 void DrawNextTimeLayer ()
@@ -232,6 +246,13 @@ void DrawNextTimeLayer ()
 
     computeNextHeight (CurrentHeight, PreviousHeight, PrePreviousHeight,
                        Vector <int> (SIZE_X, SIZE_Y), SPACE_STEP, TIME_STEP, ALPHA, VIS);
+
+    glDisable (GL_CULL_FACE);
+
+    glEnable (GL_TEXTURE_GEN_S);
+    glEnable (GL_TEXTURE_GEN_T);
+
+    glBindTexture(GL_TEXTURE_2D, Texture [1]);
 
     for (int x = 0; x + 1 < SIZE_X; x++)
     {
@@ -262,11 +283,34 @@ void DrawGLScene ()
     glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glLoadIdentity ();
 
-    float pos [4] = {0.0f, 0.0f, -1.0f, 0.0f};
+    float pos [4] = {0.0f, -1.0f, -1.0f, 0.0f};
 
     glTranslatef (0.0f, 0.0f, -3.0f);
 
     glLightfv (GL_LIGHT0, GL_POSITION, pos);
+
+    /*if (CurrentControl < ControlsSize)
+    {
+        if (Controls [CurrentControl].angle.x  == 0 &&
+            Controls [CurrentControl].angle.y  == 0 &&
+            Controls [CurrentControl].angle.z  == 0)
+        {
+            ModelZoomZ += Controls [CurrentControl].zoom.z;
+        }
+
+        else
+        {
+            ModelAngleX += Controls [CurrentControl].angle.x;
+            ModelAngleY += Controls [CurrentControl].angle.y;
+            ModelAngleZ += Controls [CurrentControl].angle.z;
+        }
+
+        CurrentControl ++;
+    }*/
+
+    if (GetAsyncKeyState (VK_SPACE)) VIS = 0.05f;
+
+    else                             VIS = 0.0005f;
 
     glTranslatef (0.0f, 0.0f, ModelZoomZ);
 
@@ -274,23 +318,24 @@ void DrawGLScene ()
     glRotatef (ModelAngleY, 0.0f, 1.0f, 0.0f);
     glRotatef (ModelAngleZ, 0.0f, 0.0f, 1.0f);
 
-    //glBindTexture(GL_TEXTURE_2D, Texture [0]);
+
+    glEnable (GL_CULL_FACE);
+
+    glDisable (GL_TEXTURE_GEN_S);
+    glDisable (GL_TEXTURE_GEN_T);
+
+    glBindTexture(GL_TEXTURE_2D, Texture [0]);
 
     glBegin(GL_QUADS);
 
-    //glTexCoord2f (0.0f, 0.0f);
-    //glVertex3f (Vertices [0]     [0].coords [0], Vertices [0]     [0].coords [1],  0.0f);
-    //glTexCoord2f (1.0f, 0.0f);
-    //glVertex3f (Vertices [0]     [0].coords [0], Vertices [0]     [0].coords [1],  1.0f);
-    //glTexCoord2f (1.0f, 1.0f);
-    //glVertex3f (Vertices [SIZE_X][0].coords [0], Vertices [SIZE_X][0].coords [1],  0.0f);
-    //glTexCoord2f (0.0f, 1.0f);
-    //glVertex3f (Vertices [SIZE_X][0].coords [0], Vertices [SIZE_X][0].coords [1],  1.0f);
-
+    glTexCoord2f (1.0f, 1.0f);
     glVertex3f (-1.0f, 1.0f,  0.0f);
-    glVertex3f (-1.0f, 1.0f,  1.0f);
-    glVertex3f (1.0f, 1.0f,  1.0f);
+    glTexCoord2f (0.0f, 1.0f);
     glVertex3f (1.0f, 1.0f,  0.0f);
+    glTexCoord2f (0.0f, 0.0f);
+    glVertex3f (1.0f, 1.0f,  1.0f);
+    glTexCoord2f (1.0f, 0.0f);
+    glVertex3f (-1.0f, 1.0f,  1.0f);
 
     glEnd ();
 
@@ -325,14 +370,14 @@ void Keyboard (unsigned char key, int x, int y)
     {
         case 'q':
 
-        ModelAngleY -= 1.0f;
+        ModelAngleY += 1.0f;
 
         break;
 
 
         case 'e':
 
-        ModelAngleY += 1.0f;
+        ModelAngleY -= 1.0f;
 
         break;
 
@@ -389,7 +434,7 @@ void Keyboard (unsigned char key, int x, int y)
 
 void MakeWave ()
 {
-    if (GetTickCount () - NextWave >= 10000)
+    if (GetTickCount () - NextWave >= 15000)
     {
         Vector <int> randomLocation (rand () % (SIZE_X - 11), rand () % (SIZE_Y - 11));
 
@@ -404,66 +449,76 @@ void MakeWave ()
                 float amplitude = (pow (randomRadius.x, 2) + pow (randomRadius.y, 2))
                                   - pow (randomX, 2) - pow (randomY, 2);
 
-                CurrentHeight [randomLocation.x + randomX + 5][randomLocation.y + randomY + 5] -= amplitude * 3.0f;
+                assert (randomLocation.x + randomX + 5 < SIZE_X && randomLocation.x + randomX + 5 >= 0);
+                assert (randomLocation.y + randomY + 5 < SIZE_Y && randomLocation.y + randomY + 5 >= 0);
+
+                CurrentHeight [randomLocation.x + randomX + 5][randomLocation.y + randomY + 5] -= amplitude * random (1.0f, 3.0f);
             }
         }
 
         NextWave = GetTickCount ();
-
-        //puts ("KEK!");
     }
 }
 
-AUX_RGBImageRec* LoadBMP(char* filename)
+void ReadController ()
 {
-    FILE* file = NULL;
+    FILE* controller = fopen ("X:\\CONTROL\\Controller.txt", "r");
+    assert (controller);
 
-    if (!filename) return NULL;
+    fseek (controller, 0, SEEK_END);
+    ControlsSize = ftell (controller);
 
-    fopen (filename, "r");
+    rewind (controller);
 
-    if (file)
+    Controls = (FuncParams*) calloc (ControlsSize, sizeof (FuncParams));
+    assert (Controls);
+
+    for (int x = 0; x < ControlsSize; x ++)
     {
-        fclose (file);
+        int currentChar = fgetc (controller);
 
-        return auxDIBImageLoad (filename);
-    }
-
-    return NULL;
-}
-
-int LoadGLTextures()
-{
-    int status = 0;
-
-    AUX_RGBImageRec* textureImage [1];
-
-    memset (textureImage, 0, sizeof (void *) * 1);
-
-    if (textureImage [0] = LoadBMP ("Vlad.bmp"))
-    {
-        status = 1;
-
-        glGenTextures (1, &Texture [0]);
-
-        glBindTexture(GL_TEXTURE_2D, Texture [0]);
-
-        glTexImage2D (GL_TEXTURE_2D, 0, 3, textureImage [0] -> sizeX, textureImage [0] -> sizeY, 0, GL_RGB, GL_UNSIGNED_BYTE, textureImage [0] -> data);
-
-        glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
-    }
-
-    if (textureImage [0])                            // If Texture Exists
-    {
-        if (textureImage [0] -> data)                   // If Texture Image Exists
+        if (currentChar != ' ')
         {
-            free (textureImage [0] -> data);             // Free The Texture Image Memory
+            if (currentChar == 'r') Controls [x].func = 0;
+
+            Controls [x].angle.x = fgetc (controller);
+            Controls [x].angle.y = fgetc (controller);
+            Controls [x].angle.z = fgetc (controller);
+
+            Controls [x].zoom.x = fgetc (controller);
+            Controls [x].zoom.x = fgetc (controller);
+            Controls [x].zoom.x = fgetc (controller);
         }
 
-        free (textureImage [0]);                      // Free The Image Structure
+        else x --;
     }
 
-    return status;
+    fclose (controller);
 }
+
+/*void LoadTextures ()
+{
+    HDC textureA = txLoadImage ("X:\\Map\\Back1.bmp");
+
+    BITMAPINFOHEADER info = { sizeof (info), 1024, 1024, 1, WORD (sizeof (RGBQUAD) * 8), BI_RGB };
+
+    RGBQUAD* bTextureA = new RGBQUAD [1024 * 1024];
+
+    assert (bTextureA);
+
+    Win32::GetDIBits (textureA, (HBITMAP) Win32::GetCurrentObject (textureA, OBJ_BITMAP),
+                      0, 1024, bTextureA, (BITMAPINFO*) &info, DIB_RGB_COLORS);
+
+    glGenTextures (1, &Texture [0]);
+    glBindTexture (GL_TEXTURE_2D, Texture [0]);
+
+    glTexImage2D (GL_TEXTURE_2D, 0, 3, 1024, 1024, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, bTextureA);
+
+    glTexFuncParamseteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexFuncParamseteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+
+    txDeleteDC (textureA);
+    delete bTextureA;
+}*/
 //============================================================================
