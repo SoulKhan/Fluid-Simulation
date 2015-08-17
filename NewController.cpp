@@ -60,7 +60,7 @@ float ModelAngleZ  = 0.0f;
 
 float ModelZoomZ  = 0.0f;
 
-float NextWave = 15000;
+float NextWave = 10000;
 
 unsigned int Texture [2];
 
@@ -173,18 +173,19 @@ void equateArrs (float** arrA, float** arrB, Vector <int> arrSize)
 
 void InitGL ()
 {
-    //ReadController ();
-
     glHint (GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);
 
-    glClearColor (0.7f, 0.7f, 0.7f, 0.0f);
+    glClearColor (0.0f, 0.0f, 0.0f, 0.0f);
     glClearDepth (1.0f);
 
     glEnable (GL_DEPTH_TEST);
     glDepthFunc (GL_LESS);
 
     glShadeModel (GL_SMOOTH);
-    glDisable (GL_LINE_SMOOTH);
+    glEnable (GL_LINE_SMOOTH);
+
+    glColor4f (1.0f, 1.0f, 1.0f, 0.0f);
+    glBlendFunc(GL_SRC_ALPHA, GL_SRC_COLOR );
 
     memset (Vertices, 0, sizeof (Vertices));
 
@@ -207,7 +208,7 @@ void InitGL ()
     }
 
 
-    Texture [0] = loadjpgGL ("X:\\Map\\Back4.jpg");
+    Texture [0] = loadjpgGL ("X:\\Map\\Tile.jpg");
 
     Texture [1] = loadjpgGL ("X:\\Map\\Water4.jpg");
 
@@ -216,7 +217,6 @@ void InitGL ()
     glTexGeni (GL_S, GL_TEXTURE_GEN_MODE, GL_SPHERE_MAP);
     glTexGeni (GL_T, GL_TEXTURE_GEN_MODE, GL_SPHERE_MAP);
 
-    glEnable (GL_DEPTH_TEST);
     glEnable (GL_TEXTURE_2D);
 
     glEnable (GL_NORMALIZE);
@@ -247,11 +247,14 @@ void DrawNextTimeLayer ()
                        Vector <int> (SIZE_X, SIZE_Y), SPACE_STEP, TIME_STEP, ALPHA, VIS);
 
     glDisable (GL_CULL_FACE);
+    glEnable (GL_DEPTH_TEST);
 
     glEnable (GL_TEXTURE_GEN_S);
     glEnable (GL_TEXTURE_GEN_T);
 
     glBindTexture(GL_TEXTURE_2D, Texture [1]);
+
+    glEnable (GL_BLEND);
 
     for (int x = 0; x + 1 < SIZE_X; x++)
     {
@@ -284,7 +287,7 @@ void DrawGLScene ()
 
     float pos [4] = {0.0f, -1.0f, -1.0f, 0.0f};
 
-    glTranslatef (0.0f, 0.0f, -3.0f);
+    glTranslatef (0.0f, 0.5f, -3.0f);
 
     glLightfv (GL_LIGHT0, GL_POSITION, pos);
 
@@ -307,9 +310,6 @@ void DrawGLScene ()
         CurrentControl ++;
     }*/
 
-
-    if (!GetAsyncKeyState (VK_SPACE)) VIS = 0.0005f;
-
     glTranslatef (0.0f, 0.0f, ModelZoomZ);
 
     glRotatef (ModelAngleX, 1.0f, 0.0f, 0.0f);
@@ -318,26 +318,64 @@ void DrawGLScene ()
 
 
     glEnable (GL_CULL_FACE);
+    glCullFace (GL_FRONT);
+
+    glEnable (GL_DEPTH_TEST);
 
     glDisable (GL_TEXTURE_GEN_S);
     glDisable (GL_TEXTURE_GEN_T);
 
+    glDisable (GL_BLEND);
+
     glBindTexture(GL_TEXTURE_2D, Texture [0]);
+
 
     glBegin(GL_QUADS);
 
-    glTexCoord2f (1.0f, 1.0f);
-    glVertex3f (-1.0f, 1.0f,  0.0f);
-    glTexCoord2f (0.0f, 1.0f);
-    glVertex3f (1.0f, 1.0f,  0.0f);
-    glTexCoord2f (0.0f, 0.0f);
-    glVertex3f (1.0f, 1.0f,  1.0f);
-    glTexCoord2f (1.0f, 0.0f);
-    glVertex3f (-1.0f, 1.0f,  1.0f);
+        /*// Front Face
+        glTexCoord2f(0.0f, 0.0f); glVertex3f(-1.0f, -1.0f,  0.5f);  // Bottom Left Of The Texture and Quad
+        glTexCoord2f(1.0f, 0.0f); glVertex3f( 1.0f, -1.0f,  0.5f);  // Bottom Right Of The Texture and Quad
+        glTexCoord2f(1.0f, 1.0f); glVertex3f( 1.0f,  1.0f,  0.5f);  // Top Right Of The Texture and Quad
+        glTexCoord2f(0.0f, 1.0f); glVertex3f(-1.0f,  1.0f,  0.5f);  // Top Left Of The Texture and Quad*/
+
+        // Back Face
+        glTexCoord2f(1.0f, 0.0f); glVertex3f(-1.0f, -1.0f, -1.7f);  // Bottom Right Of The Texture and Quad
+        glTexCoord2f(1.0f, 1.0f); glVertex3f(-1.0f,  1.0f, -1.7f);  // Top Right Of The Texture and Quad
+        glTexCoord2f(0.0f, 1.0f); glVertex3f( 1.0f,  1.0f, -1.7f);  // Top Left Of The Texture and Quad
+        glTexCoord2f(0.0f, 0.0f); glVertex3f( 1.0f, -1.0f, -1.7f);  // Bottom Left Of The Texture and Quad
+
+        // Top Face
+        glTexCoord2f(0.0f, 1.0f); glVertex3f(-1.0f,  1.0f, -1.7f);  // Top Left Of The Texture and Quad
+        glTexCoord2f(0.0f, 0.0f); glVertex3f(-1.0f,  1.0f,  0.3f);  // Bottom Left Of The Texture and Quad
+        glTexCoord2f(1.0f, 0.0f); glVertex3f( 1.0f,  1.0f,  0.3f);  // Bottom Right Of The Texture and Quad
+        glTexCoord2f(1.0f, 1.0f); glVertex3f( 1.0f,  1.0f, -1.7f);  // Top Right Of The Texture and Quad
+
+        // Bottom Face
+        glTexCoord2f(1.0f, 1.0f); glVertex3f(-1.0f, -1.0f, -1.7f);  // Top Right Of The Texture and Quad
+        glTexCoord2f(0.0f, 1.0f); glVertex3f( 1.0f, -1.0f, -1.7f);  // Top Left Of The Texture and Quad
+        glTexCoord2f(0.0f, 0.0f); glVertex3f( 1.0f, -1.0f,  0.3f);  // Bottom Left Of The Texture and Quad
+        glTexCoord2f(1.0f, 0.0f); glVertex3f(-1.0f, -1.0f,  0.3f);  // Bottom Right Of The Texture and Quad
+
+        // Right face
+        glTexCoord2f(1.0f, 0.0f); glVertex3f( 1.0f, -1.0f, -1.7f);  // Bottom Right Of The Texture and Quad
+        glTexCoord2f(1.0f, 1.0f); glVertex3f( 1.0f,  1.0f, -1.7f);  // Top Right Of The Texture and Quad
+        glTexCoord2f(0.0f, 1.0f); glVertex3f( 1.0f,  1.0f,  0.3f);  // Top Left Of The Texture and Quad
+        glTexCoord2f(0.0f, 0.0f); glVertex3f( 1.0f, -1.0f,  0.3f);  // Bottom Left Of The Texture and Quad
+
+        // Left Face
+        glTexCoord2f(0.0f, 0.0f); glVertex3f(-1.0f, -1.0f, -1.7f);  // Bottom Left Of The Texture and Quad
+        glTexCoord2f(1.0f, 0.0f); glVertex3f(-1.0f, -1.0f,  0.3f);  // Bottom Right Of The Texture and Quad
+        glTexCoord2f(1.0f, 1.0f); glVertex3f(-1.0f,  1.0f,  0.3f);  // Top Right Of The Texture and Quad
+        glTexCoord2f(0.0f, 1.0f); glVertex3f(-1.0f,  1.0f, -1.7f);  // Top Left Of The Texture and Quad
 
     glEnd ();
 
+
     DrawNextTimeLayer ();
+
+
+    if (!GetAsyncKeyState (VK_SPACE)) VIS = 0.0005f;
+
 
     glutSwapBuffers ();
 }
@@ -439,7 +477,7 @@ void Keyboard (unsigned char key, int x, int y)
 
 void MakeWave ()
 {
-    if (GetTickCount () - NextWave >= 15000)
+    if (GetTickCount () - NextWave >= 10000)
     {
         Vector <int> randomLocation (rand () % (SIZE_X - 11), rand () % (SIZE_Y - 11));
 
@@ -457,7 +495,7 @@ void MakeWave ()
                 assert (randomLocation.x + randomX + 5 < SIZE_X && randomLocation.x + randomX + 5 >= 0);
                 assert (randomLocation.y + randomY + 5 < SIZE_Y && randomLocation.y + randomY + 5 >= 0);
 
-                CurrentHeight [randomLocation.x + randomX + 5][randomLocation.y + randomY + 5] -= amplitude * random (1.0f, 3.0f);
+                CurrentHeight [randomLocation.x + randomX + 5][randomLocation.y + randomY + 5] -= amplitude * random (5.0f, 7.0f);
             }
         }
 
