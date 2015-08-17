@@ -1,0 +1,2 @@
+subst X: .
+NewController.exe

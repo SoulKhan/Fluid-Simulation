@@ -43,8 +43,7 @@ struct FuncParams
 {
     int func;
 
-    Vect3d angle;
-    Vect3d zoom;
+    Vect3d params;
 };
 
 //============================================================================
@@ -95,7 +94,7 @@ void MakeWave ();
 
 void LoadTextures ();
 
-void ReadController ();
+//void ReadController ();
 
 //============================================================================
 
@@ -174,7 +173,7 @@ void equateArrs (float** arrA, float** arrB, Vector <int> arrSize)
 
 void InitGL ()
 {
-    ReadController ();
+    //ReadController ();
 
     glHint (GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);
 
@@ -210,7 +209,7 @@ void InitGL ()
 
     Texture [0] = loadjpgGL ("X:\\Map\\Back4.jpg");
 
-    Texture [1] = loadjpgGL ("X:\\Map\\Water3.jpg");
+    Texture [1] = loadjpgGL ("X:\\Map\\Water4.jpg");
 
 
     glTexEnvf (GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_BLEND);
@@ -308,9 +307,8 @@ void DrawGLScene ()
         CurrentControl ++;
     }*/
 
-    if (GetAsyncKeyState (VK_SPACE)) VIS = 0.05f;
 
-    else                             VIS = 0.0005f;
+    if (!GetAsyncKeyState (VK_SPACE)) VIS = 0.0005f;
 
     glTranslatef (0.0f, 0.0f, ModelZoomZ);
 
@@ -370,9 +368,9 @@ void Keyboard (unsigned char key, int x, int y)
     {
         case 'q':
 
-        ModelAngleY += 1.0f;
+            ModelAngleY += 1.0f;
 
-        break;
+            break;
 
 
         case 'e':
@@ -424,6 +422,13 @@ void Keyboard (unsigned char key, int x, int y)
         break;
 
 
+        case ' ':
+
+        VIS = 0.05f;
+
+        break;
+
+
         default:
 
         break;
@@ -460,15 +465,20 @@ void MakeWave ()
     }
 }
 
-void ReadController ()
+/*void ReadController ()
 {
     FILE* controller = fopen ("X:\\CONTROL\\Controller.txt", "r");
     assert (controller);
 
     fseek (controller, 0, SEEK_END);
-    ControlsSize = ftell (controller);
+    int bufferSize = ftell (controller);
 
     rewind (controller);
+
+    char* buffer = (char*) calloc (bufferSize, sizeof (char));
+    assert (buffer);
+
+
 
     Controls = (FuncParams*) calloc (ControlsSize, sizeof (FuncParams));
     assert (Controls);
@@ -494,7 +504,7 @@ void ReadController ()
     }
 
     fclose (controller);
-}
+}*/
 
 /*void LoadTextures ()
 {
