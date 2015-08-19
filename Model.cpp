@@ -41,8 +41,8 @@ void SetBoundary (Vector <float> ** stateField, Vector <int> fieldSize);
 
 //----------------------------------------------------------------------------
 
-void computeNextHeight (float ** scalarFieldA, float ** scalarFieldB, float ** scalarFieldC,
-                        Vector <int> fieldSize, float spaceStep, float timeStep, float alpha, float vis);
+float computeNextHeight (float ** scalarFieldA, float ** scalarFieldB, float ** scalarFieldC,
+                         Vector <int> fieldSize, float spaceStep, float timeStep, float alpha, float vis);
 
 //============================================================================
 
@@ -215,10 +215,10 @@ void SetBoundary (float ** scalarField, Vector <int> fieldSize)
     }
 }
 
-void computeNextHeight (float ** scalarFieldA, float ** scalarFieldB, float ** scalarFieldC,
-                        Vector <int> fieldSize, float spaceStep, float timeStep, float alpha, float vis)
+float computeNextHeight (float ** scalarFieldA, float ** scalarFieldB, float ** scalarFieldC,
+                         Vector <int> fieldSize, float spaceStep, float timeStep, float alpha, float vis)
 {
-    //float maxHeight = 0;
+    float maxHeight = 0;
 
     for (int x = 1; x + 1 < fieldSize.x; x ++)
     {
@@ -254,9 +254,11 @@ void computeNextHeight (float ** scalarFieldA, float ** scalarFieldB, float ** s
             scalarFieldA [x][y] += (2.0f - 2 * vis) * scalarFieldB [x][y];
             scalarFieldA [x][y] -= (1.0f - vis) *  scalarFieldC [x][y];
 
+            if (scalarFieldA [x][y] > maxHeight) maxHeight = scalarFieldA [x][y];
+
             #endif
         }
     }
 
-    //printf ("%f\n", maxHeight);
+    return maxHeight;
 }

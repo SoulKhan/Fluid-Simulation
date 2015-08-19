@@ -37,8 +37,8 @@ const float TIME_STEP  = 0.01f,        //  Time step in difference scheme
             SPACE_STEP = 0.1f,         //  Space step in difference scheme
             NEW_HEIGHT = 0.0002f;      //  On this value fluid surface is deformed
 
-float       VIS        = 0.001f,      //  Viscosity of fluid
-            ALPHA      = 0.25f;        //  Speed of waves propogation
+float       VIS        = 0.0005f,      //  Viscosity of fluid
+            ALPHA      = 0.20f;        //  Speed of waves propogation
 
 //}
 //=================================================================================================================
@@ -63,6 +63,13 @@ struct FuncParams       //  Function and it's parameters
     int func;
 
     Vect3d params;
+};
+
+struct ViewPoint
+{
+    float angleX, angleY, angleZ;
+
+    float zoomZ;
 };
 
 //}
@@ -93,11 +100,10 @@ struct FuncParams       //  Function and it's parameters
     //{         Model Motion Controlling Variables
     //-----------------------------------------------------------------------------------------------------------------
 
-    float ModelAngleX  = 0.0f;              //
-    float ModelAngleY  = 0.0f;              //  Angle on which we rotate fluid surface around x/y/z axis
-    float ModelAngleZ  = 0.0f;              //
+    ViewPoint viewPointA = {-60.0f, 0.0f, 223.0f, 0.4f};
+    ViewPoint viewPointB = {-60.0f, 0.0f, 223.0f, 0.4f};
 
-    float ModelZoomZ  = 0.0f;               //  Quantity of units on which we translate fluid surface
+    bool changeToViewPointB = true;
 
     //}
     //-------------------------------------------------------------------------------------------------------------
@@ -110,6 +116,9 @@ struct FuncParams       //  Function and it's parameters
 
     float CurrentWaveAmplitudeMode   = 1.0f,
           CurrentWaveFrequencyMode   = 1.0f;
+
+    float MaxHeight = 0,
+          VelocitySum = 0;
 
     bool Pause    = false,
          ShowInfo = false;
@@ -171,13 +180,15 @@ struct FuncParams       //  Function and it's parameters
 
     void Keyboard (unsigned char key, int x, int y);
 
-    void MakeWave ();                                       // Generate wave at random location with random amplitude
+    int MakeWave ();                                        // Generate wave at random location with random amplitude
 
     void BuildFont ();
 
     inline void KillFont ();
 
     void Print (const char* message, ...);
+
+    void ChangeView (ViewPoint* viewPointA, ViewPoint* viewPointB, float numOfSteps);
 
     //}
     //-------------------------------------------------------------------------------------------------------------
@@ -308,8 +319,8 @@ int main (int argc, char* argv[])
                 }
             }
 
-            if (!Pause) computeNextHeight (CurrentHeight, PreviousHeight, PrePreviousHeight,
-                                           Vector <int> (SIZE_X, SIZE_Y), SPACE_STEP, TIME_STEP, ALPHA, VIS);
+            if (!Pause) MaxHeight = computeNextHeight (CurrentHeight, PreviousHeight, PrePreviousHeight,
+                                                       Vector <int> (SIZE_X, SIZE_Y), SPACE_STEP, TIME_STEP, ALPHA, VIS);
 
             glEnable (GL_TEXTURE_2D);
 
@@ -348,6 +359,19 @@ int main (int argc, char* argv[])
                 glEnd();
             }
 
+            VelocitySum = 0;
+
+            for (int x = 0; x < SIZE_X; x ++)
+            {
+                for (int y = 0; y < SIZE_Y; y ++)
+                {
+                    assert (x < SIZE_X && x >= 0);
+                    assert (y < SIZE_Y && y >= 0);
+
+                    VelocitySum += fabs (CurrentHeight [x][y] - PreviousHeight [x][y]);
+                }
+            }
+
             equateArrs (PrePreviousHeight, PreviousHeight, Vector <int> (SIZE_X, SIZE_Y));
             equateArrs (PreviousHeight,    CurrentHeight,  Vector <int> (SIZE_X, SIZE_Y));
         }
@@ -364,12 +388,13 @@ int main (int argc, char* argv[])
             float pos [4] = {0.0f, -1.0f, -1.0f, 0.0f};
             glLightfv (GL_LIGHT0, GL_POSITION, pos);
 
-            glTranslatef (0.0f, 0.0f, ModelZoomZ);
+            if (!changeToViewPointB) ChangeView (&viewPointA, &viewPointB, 0.001f);
 
-            glRotatef (ModelAngleX, 1.0f, 0.0f, 0.0f);
-            glRotatef (ModelAngleY, 0.0f, 1.0f, 0.0f);
-            glRotatef (ModelAngleZ, 0.0f, 0.0f, 1.0f);
+            glTranslatef (0.0f, 0.0f, viewPointA.zoomZ);
 
+            glRotatef (viewPointA.angleX, 1.0f, 0.0f, 0.0f);
+            glRotatef (viewPointA.angleY, 0.0f, 1.0f, 0.0f);
+            glRotatef (viewPointA.angleZ, 0.0f, 0.0f, 1.0f);
 
             glEnable (GL_NORMALIZE);
 
@@ -502,11 +527,11 @@ int main (int argc, char* argv[])
             glColor3f (1.0f, 1.0f, 1.0f);
             glRasterPos2f (-2.2f, 1.15f);
 
-            if (!ShowInfo) Print ("PRESS [I] TO HIDE INFO");
-            else           Print ("PRESS [I] TO SHOW INFO");
+            if (ShowInfo) Print ("PRESS [I] TO SHOW INFO");
+            else          Print ("PRESS [I] TO HIDE INFO");
 
 
-            if (!ShowInfo)
+            if (ShowInfo)
             {
                 glDisable (GL_TEXTURE_2D);
 
@@ -521,8 +546,8 @@ int main (int argc, char* argv[])
                 glColor3f (1.0f, 1.0f, 1.0f);
                 glRasterPos2f (-2.2f, 0.95f);
 
-                if (!Pause) Print ("[SIMULATING]");
-                else        Print ("[PAUSED]");
+                if (!Pause) Print ("[SIMULATION]");
+                else        Print ("[PAUSE]");
 
 
                 glRasterPos2f (-2.2f, 0.85f);
@@ -571,6 +596,13 @@ int main (int argc, char* argv[])
 
                 glRasterPos2f (-2.2f, -0.95f);
                 Print ("Press [r] to reset settings");
+
+
+                glRasterPos2f (0.4f, 1.15f);
+                Print ("Maximal height: %4.4f", MaxHeight);
+
+                glRasterPos2f (0.4f, 1.05f);
+                Print ("Average velocity: %1.7f", VelocitySum / (SIZE_X * SIZE_Y));
             }
 
 
@@ -668,56 +700,56 @@ int main (int argc, char* argv[])
         {
             case 'q':
 
-                ModelAngleY -= 1.0f;
+                viewPointA.angleY -= 1.0f;
 
             break;
 
 
             case 'e':
 
-                ModelAngleY += 1.0f;
+                viewPointA.angleY += 1.0f;
 
             break;
 
 
             case 'w':
 
-                ModelAngleX -= 1.0f;
+                viewPointA.angleX -= 1.0f;
 
             break;
 
 
             case 's':
 
-                ModelAngleX += 1.0f;
+                viewPointA.angleX += 1.0f;
 
             break;
 
 
             case 'a':
 
-                ModelAngleZ += 1.0f;
+                viewPointA.angleZ += 1.0f;
 
             break;
 
 
             case 'd':
 
-                ModelAngleZ -= 1.0f;
+                viewPointA.angleZ -= 1.0f;
 
             break;
 
 
             case '=':
 
-                ModelZoomZ += 0.1f;
+                viewPointA.zoomZ += 0.1f;
 
             break;
 
 
             case '-':
 
-                ModelZoomZ -= 0.1f;
+                viewPointA.zoomZ -= 0.1f;
 
             break;
 
@@ -733,6 +765,8 @@ int main (int argc, char* argv[])
 
                 CurrentWaveFrequencyMode -= 0.1f;
 
+                if (CurrentWaveFrequencyMode < 0) CurrentWaveFrequencyMode = 0.0f;
+
             break;
 
 
@@ -746,6 +780,8 @@ int main (int argc, char* argv[])
             case 'p':
 
                 ALPHA -= 0.001f;
+
+                if (ALPHA < 0) ALPHA = 0.0f;
 
             break;
 
@@ -761,6 +797,8 @@ int main (int argc, char* argv[])
 
                 VIS -= 0.00001f;
 
+                if (VIS < 0) VIS = 0.0f;
+
             break;
 
 
@@ -774,6 +812,8 @@ int main (int argc, char* argv[])
             case 'h':
 
                 CurrentWaveAmplitudeMode -= 0.1f;
+
+                if (CurrentWaveAmplitudeMode < 0) CurrentWaveAmplitudeMode = 0.0f;
 
             break;
 
@@ -798,17 +838,17 @@ int main (int argc, char* argv[])
 
             case 'r':
 
-                ModelAngleX  = 0.0f;
-                ModelAngleY  = 0.0f;
-                ModelAngleZ  = 0.0f;
+                viewPointA.angleX  = -60.0f;
+                viewPointA.angleY  = 0.0f;
+                viewPointA.angleZ  = 223.0f;
 
-                ModelZoomZ  = 0.0f;
+                viewPointA.zoomZ  = 0.4f;
 
                 CurrentWaveAmplitudeMode   = 1.0f;
                 CurrentWaveFrequencyMode   = 1.0f;
 
-                VIS        = 0.001f;
-                ALPHA      = 0.25f;
+                VIS        = 0.0005f;
+                ALPHA      = 0.20f;
 
                 for (int x = 0; x < SIZE_X; x ++)
                 {
@@ -827,6 +867,15 @@ int main (int argc, char* argv[])
             break;
 
 
+            case '1':
+
+                if (!changeToViewPointB) changeToViewPointB = true;
+
+                else                     changeToViewPointB = false;
+
+            break;
+
+
             default:
 
             break;
@@ -837,7 +886,7 @@ int main (int argc, char* argv[])
 
     //-------------------------------------------------------------------------------------------------------------
 
-    void MakeWave ()
+    int MakeWave ()
     {
         if (GetTickCount () - (DWORD) NextWave >= CurrentWaveFrequencyMode * 2000.0f)
         {
@@ -851,21 +900,26 @@ int main (int argc, char* argv[])
             {
                 for (int randomY = -randomRadius.y; randomY < randomRadius.y + 1; randomY ++)
                 {
-                    float amplitude  = ((float) pow (randomRadius.x, 2) + (float) pow (randomRadius.y, 2));
-
-                          amplitude -= (float) pow (randomX, 2);
-                          amplitude -= (float) pow (randomY, 2);
+                    float amplitude  = ((float) pow (randomRadius.x, 2) + (float) pow (randomRadius.y, 2))
+                                       - (float) pow (randomX, 2) - (float) pow (randomY, 2);
 
                     assert (randomLocation.x + randomX + 5 < SIZE_X && randomLocation.x + randomX + 5 >= 0);
                     assert (randomLocation.y + randomY + 5 < SIZE_Y && randomLocation.y + randomY + 5 >= 0);
 
-                    CurrentHeight [randomLocation.x + randomX + 5][randomLocation.y + randomY + 5]
-                    -= amplitude * (float) random (CurrentWaveAmplitudeMode, CurrentWaveAmplitudeMode + 1.0f);
+                    PreviousHeight [randomLocation.x + randomX + 5][randomLocation.y + randomY + 5]
+                    += amplitude * (float) random (CurrentWaveAmplitudeMode, CurrentWaveAmplitudeMode + 1.0f) * 0.00005f;
+
+                    PrePreviousHeight [randomLocation.x + randomX + 5][randomLocation.y + randomY + 5]
+                    += amplitude * (float) random (CurrentWaveAmplitudeMode, CurrentWaveAmplitudeMode + 1.0f) * 0.0001f;
                 }
             }
 
             NextWave = (float) GetTickCount ();
+
+            return 1;
         }
+
+        return 0;
     }
 
     //-------------------------------------------------------------------------------------------------------------
@@ -913,6 +967,17 @@ int main (int argc, char* argv[])
 
         glCallLists (strlen (text), GL_UNSIGNED_BYTE, text);     // Draws the display list text
         glPopAttrib ();                                          // Pops the display list bits
+    }
+
+    //-------------------------------------------------------------------------------------------------------------
+
+    void ChangeView (ViewPoint* viewPointA, ViewPoint* viewPointB, float numOfSteps)
+    {
+        viewPointA->angleX = Lerp (viewPointA->angleX, viewPointB->angleX, numOfSteps);
+        viewPointA->angleY = Lerp (viewPointA->angleY, viewPointB->angleY, numOfSteps);
+        viewPointA->angleZ = Lerp (viewPointA->angleZ, viewPointB->angleZ, numOfSteps);
+
+        viewPointA->zoomZ = Lerp (viewPointA->zoomZ, viewPointB->zoomZ, numOfSteps);
     }
 
     //}
