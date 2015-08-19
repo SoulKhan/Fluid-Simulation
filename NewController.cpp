@@ -489,6 +489,23 @@ int main (int argc, char* argv[])
             DrawNextTimeLayer ();
 
 
+            glDisable (GL_TEXTURE_2D);
+
+            glDisable (GL_LIGHTING);
+
+            glDisable (GL_DEPTH_TEST);
+
+            glLoadIdentity ();
+
+            glTranslatef (0.0f, 0.0f, -3.0f);
+
+            glColor3f (1.0f, 1.0f, 1.0f);
+            glRasterPos2f (-2.2f, 1.15f);
+
+            if (!ShowInfo) Print ("PRESS [I] TO HIDE INFO");
+            else           Print ("PRESS [I] TO SHOW INFO");
+
+
             if (!ShowInfo)
             {
                 glDisable (GL_TEXTURE_2D);
@@ -502,26 +519,58 @@ int main (int argc, char* argv[])
                 glTranslatef (0.0f, 0.0f, -3.0f);
 
                 glColor3f (1.0f, 1.0f, 1.0f);
-                glRasterPos2f (-2.2f, 1.15f);
+                glRasterPos2f (-2.2f, 0.95f);
 
                 if (!Pause) Print ("[SIMULATING]");
                 else        Print ("[PAUSED]");
 
 
-                glRasterPos2f (-2.2f, 1.05f);
+                glRasterPos2f (-2.2f, 0.85f);
                 Print ("Fluid surface");
 
-                glRasterPos2f (-2.2f, 0.95f);
+                glRasterPos2f (-2.2f, 0.75f);
                 Print ("deformation coefficient: %2.1f", CurrentWaveAmplitudeMode);
 
-                glRasterPos2f (-2.2f, 0.85f);
+                glRasterPos2f (-2.2f, 0.65f);
                 Print ("One drop in %2.1f seconds", CurrentWaveFrequencyMode * 2.0f);
 
-                glRasterPos2f (-2.2f, 0.75f);
+                glRasterPos2f (-2.2f, 0.55f);
                 Print ("Viscosity: %0.5f", VIS);
 
-                glRasterPos2f (-2.2f, 0.65f);
+                glRasterPos2f (-2.2f, 0.45f);
                 Print ("Wave propogation speed: %0.3f", ALPHA);
+
+
+                glRasterPos2f (-2.2f, 0.25f);
+                Print ("[p] - wave propogation speed");
+
+                glRasterPos2f (-2.2f, 0.15f);
+                Print ("[t] - frequency [v] - viscosity");
+
+                glRasterPos2f (-2.2f, 0.05f);
+                Print ("[h] - amplitude");
+
+                glRasterPos2f (-2.2f, -0.15f);
+                Print ("Press [key] to decrease value");
+
+                glRasterPos2f (-2.2f, -0.25f);
+                Print ("Press [shift] + [key] to increase value");
+
+
+                glRasterPos2f (-2.2f, -0.45f);
+                Print ("Press [q][w][e][a][s][d] to rotate the pool");
+
+                glRasterPos2f (-2.2f, -0.55f);
+                Print ("Press [-][=] to zoom in/out the pool");
+
+                glRasterPos2f (-2.2f, -0.75f);
+                Print ("Press [spacebar] to stop time");
+
+                glRasterPos2f (-2.2f, -0.85f);
+                Print ("Hold [spacebar] to calm fluid surface");
+
+                glRasterPos2f (-2.2f, -0.95f);
+                Print ("Press [r] to reset settings");
             }
 
 
@@ -619,14 +668,14 @@ int main (int argc, char* argv[])
         {
             case 'q':
 
-                ModelAngleY += 1.0f;
+                ModelAngleY -= 1.0f;
 
             break;
 
 
             case 'e':
 
-                ModelAngleY -= 1.0f;
+                ModelAngleY += 1.0f;
 
             break;
 
@@ -747,6 +796,37 @@ int main (int argc, char* argv[])
             break;
 
 
+            case 'r':
+
+                ModelAngleX  = 0.0f;
+                ModelAngleY  = 0.0f;
+                ModelAngleZ  = 0.0f;
+
+                ModelZoomZ  = 0.0f;
+
+                CurrentWaveAmplitudeMode   = 1.0f;
+                CurrentWaveFrequencyMode   = 1.0f;
+
+                VIS        = 0.001f;
+                ALPHA      = 0.25f;
+
+                for (int x = 0; x < SIZE_X; x ++)
+                {
+                    for (int y = 0; y < SIZE_Y; y ++)
+                    {
+                        assert (x < SIZE_X && x >= 0);
+                        assert (y < SIZE_Y && y >= 0);
+
+                        CurrentHeight     [x][y] = 0;
+                        PreviousHeight    [x][y] = 0;
+                        PrePreviousHeight [x][y] = 0;
+                    }
+                }
+
+
+            break;
+
+
             default:
 
             break;
@@ -761,7 +841,7 @@ int main (int argc, char* argv[])
     {
         if (GetTickCount () - (DWORD) NextWave >= CurrentWaveFrequencyMode * 2000.0f)
         {
-            Vector <int> randomLocation (rand () % (SIZE_X - 11), rand () % (SIZE_Y - 11));
+            Vector <int> randomLocation (rand () % (SIZE_X - 21) + 10, rand () % (SIZE_Y - 21) + 10);
 
             Vector <int> randomRadius (rand () % 5 + 1, 0);
 
